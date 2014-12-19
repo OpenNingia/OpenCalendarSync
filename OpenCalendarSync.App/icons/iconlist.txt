@@ -1,0 +1,4 @@
+sync.ico
+search.ico
+settings.ico
+send.ico

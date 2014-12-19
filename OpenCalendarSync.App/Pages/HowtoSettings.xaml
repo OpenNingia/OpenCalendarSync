@@ -1,0 +1,58 @@
+﻿<Page x:Class="OpenCalendarSync.App.Tray.Pages.HowtoSettings"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      mc:Ignorable="d"
+	Title="HowtoSettings" d:DesignHeight="408" d:DesignWidth="620">
+
+    <FlowDocumentScrollViewer VerticalScrollBarVisibility="Disabled" Style="{StaticResource ContentRoot}">
+        <FlowDocument 
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+            <Paragraph FontSize="18" TextAlignment="Left">
+                <Bold>Modificare le impostazioni</Bold>
+            </Paragraph>
+
+            <Paragraph>
+                Per modificare le impostazioni selezionare la voce
+                <Image Source="pack://application:,,,/icons/settings.png" Width="22"/>
+                <Italic>Cambia Impostazioni</Italic>
+            </Paragraph>
+
+            <Paragraph>
+                Le personalizzazione possibili includono:
+            </Paragraph>
+
+            <List>
+                <ListItem>
+                    <Paragraph>
+                        <Bold>Opzioni generiche</Bold>
+                    </Paragraph>
+                    <Paragraph>quali il nome del calendario Google da utilizzare e l'intervallo tra una sincronizzazione e l'altra.</Paragraph>
+                </ListItem>
+
+                <ListItem>
+                    <Paragraph>
+                        <Bold>Segreti</Bold>
+                    </Paragraph>
+                    <Paragraph>per l'autenticazione del client e dell'account Google</Paragraph>
+                </ListItem>
+
+                <ListItem>
+                    <Paragraph>
+                        <Bold>Colori</Bold>
+                    </Paragraph>
+                    <Paragraph>dello sfondo e del testo di ogni evento nel calendario</Paragraph>
+                </ListItem>                
+            </List>
+            
+            <Paragraph>
+                Per applicare le modifiche premere sul pulsante
+                <Italic>Salva</Italic>
+            </Paragraph>
+
+        </FlowDocument>
+    </FlowDocumentScrollViewer>
+</Page>
