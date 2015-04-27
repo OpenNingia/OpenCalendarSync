@@ -15,7 +15,11 @@ namespace OpenCalendarSync.Lib.Database
             Log.Info("Initializing storage...");
             Client = new MongoClient(ConnectionString);
             Server = Client.GetServer();
+#if DEBUG
+            Database = Server.GetDatabase("OpenCalendarSync_debug");
+#else
             Database = Server.GetDatabase("OpenCalendarSync");
+#endif
             Appointments = Database.GetCollection<GenericEvent>("appointments");
         }
 

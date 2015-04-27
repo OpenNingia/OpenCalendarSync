@@ -15,23 +15,23 @@ using System.Collections.Generic;
 using System.IO;
 using Squirrel;
 using Ookii.Dialogs.Wpf;
+using FirstFloor.ModernUI.Windows.Controls;
+using System.Windows.Shell;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace OpenCalendarSync.App.Tray
 {
     /// <summary>
     /// Logica di interazione per MainWindow.xaml
     /// </summary>
-    public partial class MainWindow
+    public partial class MainWindow : ModernWindow
     {
-        private readonly DispatcherTimer _iconAnimationTimer;
-        private int _currentIconIndex;
-        private readonly System.Drawing.Icon[] _animationIcons;
-        private readonly System.Drawing.Icon _idleIcon;
-        private bool _animationStopping;
-
-        private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         static bool _showTheWelcomeWizard;
+        static readonly log4net.ILog Log = log4net.LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        
+        UpdateManager _mgr;
+        TaskbarItemInfo taskBarItem;
 
         public MainWindow()
         {
@@ -47,24 +47,10 @@ namespace OpenCalendarSync.App.Tray
                 Log.Error("Exception", ex);    
             }
 
-            _currentIconIndex = 0;
-            _animationIcons    = new System.Drawing.Icon[11];
-            _animationStopping = false;
+            // instantiate the taskbar item
+            taskBarItem = new TaskbarItemInfo();
 
-            for ( var i = 0; i < 11; ++i ) {
-                try
-                {
-                    var resName = string.Format("_{0}", i + 1);
-                    _animationIcons[i] = GetAppIcon(resName, new System.Drawing.Size(32,32));
-                }
-                catch (Exception e)
-                {
-                    Log.Error("Exception", e);
-                }
-            }
-
-            _idleIcon = GetAppIcon("app", new System.Drawing.Size(256, 256));
-            TrayIcon.Icon = _idleIcon;
+            NotificationManager.RegisterTaskBar(taskBarItem);
 
             // Create a Timer with a Normal Priority
             var timer = new DispatcherTimer {Interval = TimeSpan.FromMinutes(Settings.Default.RefreshRate)};
@@ -74,26 +60,19 @@ namespace OpenCalendarSync.App.Tray
             // the UI thread
             timer.Tick += delegate {
                 StartSync();
-            };
+            };            
 
-            timer.Start();
+            timer.Start();                       
+        }
 
-            _iconAnimationTimer = new DispatcherTimer {Interval = TimeSpan.FromMilliseconds(50)};
+        public void AppendNotifyMessage(string title, string message)
+        {
+            NotificationManager.AppendNotifyMessage(title, message);
+        }
 
-            _iconAnimationTimer.Tick += delegate
-            {
-                if (_animationStopping && _currentIconIndex == 0)
-                {
-                    _animationStopping = false;
-                    _iconAnimationTimer.Stop();
-                    TrayIcon.Icon = _idleIcon;
-                }
-                else
-                {
-                    _currentIconIndex = ++_currentIconIndex % 11;
-                    TrayIcon.Icon = _animationIcons[_currentIconIndex];
-                }
-            };
+        public void AppendErrorMessage(string title, string message)
+        {
+            NotificationManager.AppendErrorMessage(title, message);
         }
 
         private System.Drawing.Icon GetAppIcon(string name, System.Drawing.Size sz)
@@ -115,12 +94,14 @@ namespace OpenCalendarSync.App.Tray
             StartSync();
         }
 
-        private async void StartSync()
+        public async void StartSync()
         {
-            MiStatus.Header = "Sincronizzazione in corso...";
+            AppendNotifyMessage("Inizio sincronizzazione", "");
 
-            _currentIconIndex = 0;
-            _iconAnimationTimer.Start();
+            taskBarItem.ProgressState = TaskbarItemProgressState.Indeterminate;
+
+            var conv = new ImageSourceConverter();
+            taskBarItem.Overlay = (ImageSource)conv.ConvertFrom(Properties.Resources.sync);
 
             await OutlookToGoogle();
             EndSync();
@@ -128,8 +109,22 @@ namespace OpenCalendarSync.App.Tray
 
         private void EndSync()
         {
-            MiStatus.Header = "In attesa...";
-            _animationStopping = true;            
+            AppendNotifyMessage("Sincronizzazione terminata", "");
+        }
+
+        private void ProgressError()
+        {
+            taskBarItem.ProgressState = TaskbarItemProgressState.Error;
+        }
+
+        private void ProgressDone()
+        {
+            taskBarItem.ProgressState = TaskbarItemProgressState.Paused;
+        }
+
+        private void ProgressIdle()
+        {
+            taskBarItem.ProgressState = TaskbarItemProgressState.None;
         }
 
         private async Task OutlookToGoogle()
@@ -218,9 +213,11 @@ namespace OpenCalendarSync.App.Tray
                 {
                     text += "\n" + String.Format("{0} eventi rimossi", events.Count(e => e.Event.Action == EventAction.Remove));
                 }
-                TrayIcon.ShowBalloonTip(title, text, BalloonIcon.Info);
-                HideBalloonAfterSeconds(10);
-            }
+
+                AppendNotifyMessage(title, text);
+
+                ProgressDone();
+            } else { ProgressIdle(); }
         }
 
         private void SyncFailure(string message)
@@ -230,33 +227,20 @@ namespace OpenCalendarSync.App.Tray
             var details = message;
             text += details;
 
-            //show balloon with built-in icon
-            TrayIcon.ShowBalloonTip(title, text, BalloonIcon.Error);
-        }
+            ProgressError();
 
-        private void HideBalloonAfterSeconds(int seconds)
-        {
-            var tmr = new DispatcherTimer {Interval = TimeSpan.FromSeconds(seconds)};
-            tmr.Tick += delegate
-            {
-                tmr.Stop();
-                //hide balloon
-                TrayIcon.HideBalloonTip();                
-            };
-            tmr.Start();
+            AppendErrorMessage(title, text);
         }
 
         private void miSettings_Click(object sender, RoutedEventArgs e)
         {
-            var sd = new SettingsDialog(TrayIcon);
-            var result = sd.ShowDialog();
-            if (result.HasValue && result.Value)
-            {
-                Settings.Default.Save();
-            }
+            ShowSettingsDialog();
         }
 
-        private UpdateManager _mgr;
+        public void ShowSettingsDialog()
+        {
+            ContentSource = new Uri("Pages/SettingsPage.xaml", UriKind.Relative);
+        }        
 
         private async void Window_Initialized(object sender, EventArgs e)
         {
@@ -287,8 +271,7 @@ namespace OpenCalendarSync.App.Tray
                 onInitialInstall: v =>
                 {
                     Log.Info(String.Format("Application installed {0}", v.ToString()));
-                    TrayIcon.ShowBalloonTip("Installazione", String.Format("OpenCalendarSync {0} installato.", v.ToString()), BalloonIcon.Info);
-                    HideBalloonAfterSeconds(10);
+                    AppendNotifyMessage("Installazione", String.Format("OpenCalendarSync {0} installato.", v.ToString()));
                     manager.CreateShortcutForThisExe();
                 },
                 onAppUpdate: v =>
@@ -303,14 +286,20 @@ namespace OpenCalendarSync.App.Tray
                     {
                         Log.Error("Error while upgrading settings, you'll have to merge them manually", ex);
                     }
-                    TrayIcon.ShowBalloonTip("Aggiornamento", String.Format("OpenCalendarSync aggiornato alla versione {0}", v.ToString()), BalloonIcon.Info);
+
+                    AppendNotifyMessage("Aggiornamento", String.Format("OpenCalendarSync aggiornato alla versione {0}", v.ToString()));                    
                     manager.CreateShortcutForThisExe();
                 },
                 onAppUninstall: v => manager.RemoveShortcutForThisExe(),
                 onFirstRun: () => _showTheWelcomeWizard = true);
             }
 
-            if (!_showTheWelcomeWizard) return;
+            if (!_showTheWelcomeWizard)
+            {
+                ContentSource = new Uri("Pages/Notifies.xaml", UriKind.Relative);
+                return;
+            }
+            
             using (var welcomeDialog = new TaskDialog())
             {
                 welcomeDialog.Buttons.Add(new TaskDialogButton(ButtonType.Ok));
@@ -333,8 +322,13 @@ namespace OpenCalendarSync.App.Tray
 
         private async void MiUpdate_OnClick(object sender, RoutedEventArgs e)
         {
+            await CheckUpdates();
+        }
+
+        public async Task CheckUpdates()
+        {
             if (string.IsNullOrEmpty(Settings.Default.UpdateRepositoryPath))
-            { 
+            {
                 Log.Info("No repository path is set, won't update");
                 return;
             }
@@ -363,7 +357,7 @@ namespace OpenCalendarSync.App.Tray
                 var userDecision = updateAvailableDialog.Show();
 
                 if (userDecision.ButtonType != ButtonType.Yes)
-                { 
+                {
                     Log.Info("User has selected to abort the update");
                     return;
                 }
@@ -379,7 +373,7 @@ namespace OpenCalendarSync.App.Tray
                     var updateAppTask = _mgr.UpdateApp(i =>
                     {
                         if ((i >= 0 && i <= 100) && !_updateFinished)
-                        { 
+                        {
                             _updateDialog.ReportProgress(i);
                         }
                     });
@@ -396,9 +390,18 @@ namespace OpenCalendarSync.App.Tray
             catch (Exception ex)
             {
                 Log.Error("Failed to check or apply update", ex);
-                TrayIcon.ShowBalloonTip("Errore", "Ricerca aggiornamenti o applicazione aggiornamento fallita", BalloonIcon.Error);
-                HideBalloonAfterSeconds(10);
+                AppendErrorMessage("Ricerca aggiornamenti", "Ricerca aggiornamenti o applicazione aggiornamento fallita");
             }
+        }
+
+        private void ModernWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            AppendNotifyMessage("OpenCalendarSync pronto.", "");
+        }
+
+        private void ModernWindow_Activated(object sender, EventArgs e)
+        {
+            NotificationManager.StopBlink();
         }
     }
 }

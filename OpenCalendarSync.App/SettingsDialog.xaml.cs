@@ -7,13 +7,14 @@ using System;
 using OpenCalendarSync.Lib.Database;
 using System.Windows.Threading;
 using Ookii.Dialogs.Wpf;
+using FirstFloor.ModernUI.Windows.Controls;
 
 namespace OpenCalendarSync.App.Tray
 {
     /// <summary>
     /// Logica di interazione per SettingsDialog.xaml
     /// </summary>
-    public partial class SettingsDialog
+    public partial class SettingsDialog : ModernDialog
     {
         private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private string _clientId;
@@ -23,13 +24,6 @@ namespace OpenCalendarSync.App.Tray
         {
             InitializeComponent();
             InternalInit();
-        }
-
-        public SettingsDialog(Hardcodet.Wpf.TaskbarNotification.TaskbarIcon trayIcon)
-        {
-            InitializeComponent();
-            InternalInit();
-            _trayIcon = trayIcon;
         }
 
         private void InternalInit()
@@ -89,7 +83,7 @@ namespace OpenCalendarSync.App.Tray
                 if(!res)
                 { 
                     Log.Error("Couldn't log in to google services with the provided clientId and clientSecret");
-                    _trayIcon.ShowBalloonTip("Errore", "Login a servizi google non effettuato.", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Error);
+                    //_trayIcon.ShowBalloonTip("Errore", "Login a servizi google non effettuato.", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Error);
                     HideBalloonAfterSeconds(6);
                     return;
                 }
@@ -131,12 +125,12 @@ namespace OpenCalendarSync.App.Tray
             }
             Settings.Default.CalendarID = "";
             text += "\tID del calendario resettato";
-            _trayIcon.ShowBalloonTip(title, text, Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+            //_trayIcon.ShowBalloonTip(title, text, Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
             HideBalloonAfterSeconds(6);
         }
 
         private bool[] _colorChanged;
-        private readonly Hardcodet.Wpf.TaskbarNotification.TaskbarIcon _trayIcon;
+        //private readonly Hardcodet.Wpf.TaskbarNotification.TaskbarIcon _trayIcon;
         private void textColorComboBox_SelectedColorChanged(object sender, RoutedPropertyChangedEventArgs<System.Windows.Media.Color> e)
         {
             if(e.NewValue != e.OldValue)
@@ -174,7 +168,7 @@ namespace OpenCalendarSync.App.Tray
                 { 
                     await GoogleCalendarManager.Instance.SetCalendarColor(foregroundColor.ToLower(), backgroundColor.ToLower());
                 }
-                _trayIcon.ShowBalloonTip("Colore calendario", "Il colore del tuo calendario su google e' stato cambiato correttamente", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+                //_trayIcon.ShowBalloonTip("Colore calendario", "Il colore del tuo calendario su google e' stato cambiato correttamente", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
                 HideBalloonAfterSeconds(6);
             }
         }
@@ -185,7 +179,7 @@ namespace OpenCalendarSync.App.Tray
             tmr.Tick += delegate
             {
                 tmr.Stop();
-                _trayIcon.HideBalloonTip();
+                //_trayIcon.HideBalloonTip();
             };
             tmr.Start();
         }
